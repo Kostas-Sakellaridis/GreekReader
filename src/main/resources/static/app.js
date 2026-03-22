@@ -594,6 +594,43 @@
         ];
     }
 
+    // --- Theme Picker ---
+    const themeBtn = $('themeBtnLanding');
+    const themePicker = $('themePicker');
+
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('greekReaderTheme', theme);
+        // Highlight active swatch
+        document.querySelectorAll('.theme-swatch').forEach(s => {
+            s.classList.toggle('active', s.dataset.theme === theme);
+        });
+    }
+
+    themeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        themePicker.classList.toggle('visible');
+    });
+
+    themePicker.addEventListener('click', (e) => {
+        const swatch = e.target.closest('.theme-swatch');
+        if (swatch) {
+            setTheme(swatch.dataset.theme);
+            themePicker.classList.remove('visible');
+        }
+        e.stopPropagation();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!themePicker.contains(e.target) && e.target !== themeBtn) {
+            themePicker.classList.remove('visible');
+        }
+    });
+
+    // Restore saved theme
+    const savedTheme = localStorage.getItem('greekReaderTheme') || 'parchment';
+    setTheme(savedTheme);
+
     // --- Init ---
     async function init() {
         renderRecent();
