@@ -631,6 +631,153 @@
     const savedTheme = localStorage.getItem('greekReaderTheme') || 'parchment';
     setTheme(savedTheme);
 
+    // --- AI Analysis (Gemini) ---
+    const selectionPopup = $('selectionPopup');
+    const analyzeBtn = $('analyzeBtn');
+    const analysisPanel = $('analysisPanel');
+    const analysisContent = $('analysisContent');
+    const closeAnalysis = $('closeAnalysis');
+    const apiKeyModal = $('apiKeyModal');
+    const apiKeyInput = $('apiKeyInput');
+    const apiKeySave = $('apiKeySave');
+    const apiKeyCancel = $('apiKeyCancel');
+
+    let selectedText = '';
+
+    function getApiKey() {
+        return localStorage.getItem('geminiApiKey') || 'AIzaSyCG8NGG2kcrLdviB5EIfNjnSZW3SgZ1QHc';
+    }
+
+    // Show "Analyze" button near selection
+    document.addEventListener('mouseup', (e) => {
+        // Only in reader pane
+        if (!e.target.closest('#originalPane')) {
+            selectionPopup.classList.remove('visible');
+            return;
+        }
+        const sel = window.getSelection();
+        const text = sel.toString().trim();
+        if (text.length < 2) {
+            selectionPopup.classList.remove('visible');
+            return;
+        }
+        selectedText = text;
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        selectionPopup.style.left = (rect.left + rect.width / 2 - 60) + 'px';
+        selectionPopup.style.top = (rect.top - 40) + 'px';
+        selectionPopup.classList.add('visible');
+    });
+
+    document.addEventListener('mousedown', (e) => {
+        if (!selectionPopup.contains(e.target)) {
+            selectionPopup.classList.remove('visible');
+        }
+    });
+
+    analyzeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectionPopup.classList.remove('visible');
+        if (!getApiKey()) {
+            apiKeyModal.classList.add('visible');
+            apiKeyInput.focus();
+            return;
+        }
+        runAnalysis(selectedText);
+    });
+
+    // API key modal
+    apiKeySave.addEventListener('click', () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            localStorage.setItem('geminiApiKey', key);
+            apiKeyModal.classList.remove('visible');
+            apiKeyInput.value = '';
+            runAnalysis(selectedText);
+        }
+    });
+
+    apiKeyCancel.addEventListener('click', () => {
+        apiKeyModal.classList.remove('visible');
+        apiKeyInput.value = '';
+    });
+
+    apiKeyInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') apiKeySave.click();
+        if (e.key === 'Escape') apiKeyCancel.click();
+    });
+
+    closeAnalysis.addEventListener('click', () => {
+        analysisPanel.classList.remove('visible');
+    });
+
+    async function runAnalysis(text) {
+        analysisPanel.classList.add('visible');
+        analysisContent.innerHTML = `
+            <div class="ai-source-text">${esc(text)}</div>
+            <div class="ai-loading"><div class="mini-spinner"></div> Analyzing with Gemini...</div>
+        `;
+
+        const apiKey = getApiKey();
+        const lang = (state.currentWork && (state.currentWork.lang === 'lat' || state.currentWork.lang === 'la'))
+            ? 'Latin' : 'Ancient Greek';
+
+        const prompt = `You are an expert classicist and ${lang} scholar. Analyze the following ${lang} text.
+
+Provide:
+1. **Literal Translation**: A word-for-word literal translation preserving the original word order as much as possible.
+2. **Smooth Translation**: A natural, readable English translation.
+3. **Word-by-Word Analysis**: For each word, provide a table with columns: Word | Lemma | Part of Speech | Morphology | Meaning
+
+Format your response in clean HTML (no markdown). Use <h4> for headings, <table> for the word analysis, and <p> for translations. Do not include <html>, <body>, or <head> tags.
+
+Text to analyze:
+${text}`;
+
+        try {
+            const resp = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                }
+            );
+
+            if (!resp.ok) {
+                const err = await resp.json();
+                const msg = err.error?.message || 'API request failed';
+                if (resp.status === 400 || resp.status === 403) {
+                    localStorage.removeItem('geminiApiKey');
+                    analysisContent.innerHTML = `
+                        <div class="ai-source-text">${esc(text)}</div>
+                        <div class="ai-error">Invalid API key. Please try again.</div>
+                    `;
+                    return;
+                }
+                throw new Error(msg);
+            }
+
+            const data = await resp.json();
+            const result = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
+
+            // Strip markdown code fences if present
+            let html = result.replace(/```html\n?/g, '').replace(/```\n?/g, '');
+
+            analysisContent.innerHTML = `
+                <div class="ai-source-text">${esc(text)}</div>
+                <div class="ai-result">${html}</div>
+            `;
+        } catch (e) {
+            analysisContent.innerHTML = `
+                <div class="ai-source-text">${esc(text)}</div>
+                <div class="ai-error">Error: ${esc(e.message)}</div>
+            `;
+        }
+    }
+
     // --- Init ---
     async function init() {
         renderRecent();

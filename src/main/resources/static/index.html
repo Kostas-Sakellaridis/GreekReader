@@ -93,6 +93,33 @@
         <!-- Tooltip -->
         <div id="tooltip" class="tooltip"></div>
 
+        <!-- Selection popup -->
+        <div id="selectionPopup" class="selection-popup">
+            <button id="analyzeBtn" class="analyze-btn">Analyze with AI</button>
+        </div>
+
+        <!-- AI Analysis Panel -->
+        <div id="analysisPanel" class="analysis-panel">
+            <div class="analysis-header">
+                <span class="analysis-title">AI Analysis</span>
+                <button id="closeAnalysis" class="analysis-close">&times;</button>
+            </div>
+            <div id="analysisContent" class="analysis-content"></div>
+        </div>
+
+        <!-- API Key Modal -->
+        <div id="apiKeyModal" class="modal-overlay">
+            <div class="modal">
+                <h3>Gemini API Key</h3>
+                <p>Enter your Google Gemini API key to enable AI analysis.</p>
+                <input type="password" id="apiKeyInput" placeholder="AIza..." autocomplete="off">
+                <div class="modal-actions">
+                    <button id="apiKeySave" class="modal-btn primary">Save</button>
+                    <button id="apiKeyCancel" class="modal-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading overlay -->
         <div id="loading" class="loading-overlay">
             <div class="spinner"></div>
