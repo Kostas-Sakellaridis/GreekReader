@@ -1,0 +1,352 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: #f5f0e8;
+    color: #2c2c2c;
+    min-height: 100vh;
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+/* Landing Page */
+header {
+    text-align: center;
+    padding: 60px 20px 30px;
+}
+
+header h1 {
+    font-size: 2.8rem;
+    color: #3a2a1a;
+    letter-spacing: 2px;
+}
+
+.subtitle {
+    color: #7a6a5a;
+    font-style: italic;
+    margin-top: 8px;
+    font-size: 1.1rem;
+}
+
+.search-container {
+    max-width: 600px;
+    margin: 30px auto;
+    padding: 0 20px;
+    position: relative;
+}
+
+#searchInput {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 1.1rem;
+    font-family: inherit;
+    border: 2px solid #c4b5a0;
+    border-radius: 8px;
+    background: #fffdf8;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#searchInput:focus {
+    border-color: #8b6914;
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 20px;
+    right: 20px;
+    background: #fffdf8;
+    border: 2px solid #c4b5a0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    display: none;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.search-results.visible { display: block; }
+
+.search-result-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background 0.15s;
+}
+
+.search-result-item:hover {
+    background: #f0e8d8;
+}
+
+.search-result-item .author {
+    font-size: 0.85rem;
+    color: #8a7a6a;
+}
+
+.search-result-item .work-name {
+    font-weight: bold;
+    color: #3a2a1a;
+}
+
+/* Recent Works */
+.recent-works {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.recent-works h2 {
+    color: #5a4a3a;
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #d4c5b0;
+    padding-bottom: 8px;
+}
+
+.recent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #fffdf8;
+    border: 1px solid #e0d5c5;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.recent-item:hover {
+    background: #f0e8d8;
+    border-color: #c4b5a0;
+}
+
+.recent-item .recent-title {
+    font-weight: bold;
+    color: #3a2a1a;
+}
+
+.recent-item .recent-author {
+    font-size: 0.85rem;
+    color: #8a7a6a;
+}
+
+.recent-item .recent-section {
+    font-size: 0.85rem;
+    color: #8b6914;
+    white-space: nowrap;
+}
+
+/* Reader */
+.reader-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: #3a2a1a;
+    color: #f5f0e8;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.nav-btn {
+    background: none;
+    border: 1px solid #8a7a6a;
+    color: #f5f0e8;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    transition: all 0.15s;
+}
+
+.nav-btn:hover {
+    background: #5a4a3a;
+    border-color: #c4b5a0;
+}
+
+.nav-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.work-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: center;
+    flex: 1;
+    padding: 0 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-info {
+    font-size: 0.85rem;
+    color: #c4b5a0;
+    min-width: 80px;
+    text-align: center;
+}
+
+.reader-content {
+    display: flex;
+    height: calc(100vh - 52px);
+}
+
+.pane {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+.pane-divider {
+    width: 1px;
+    background: #d4c5b0;
+}
+
+.pane-title {
+    color: #8a7a6a;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+}
+
+.text-content {
+    font-size: 1.15rem;
+    line-height: 1.9;
+}
+
+.text-content .section-block {
+    margin-bottom: 25px;
+}
+
+.text-content .section-label {
+    font-size: 0.8rem;
+    color: #8b6914;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+/* Clickable words */
+.word {
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.1s;
+    position: relative;
+}
+
+.word:hover {
+    background: #e8d8b8;
+}
+
+/* Tooltip */
+.tooltip {
+    position: fixed;
+    background: #2c2c2c;
+    color: #f5f0e8;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    max-width: 350px;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    line-height: 1.5;
+    pointer-events: none;
+}
+
+.tooltip.visible { display: block; }
+
+.tooltip .lemma {
+    font-weight: bold;
+    color: #f0c040;
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.tooltip .morph {
+    color: #c0b0a0;
+    font-size: 0.8rem;
+    margin-bottom: 6px;
+}
+
+.tooltip .definition {
+    color: #e0d8d0;
+}
+
+.tooltip .loading-morph {
+    color: #a09080;
+    font-style: italic;
+}
+
+/* Loading */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(245, 240, 232, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 500;
+}
+
+.loading-overlay.visible {
+    display: flex;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #d4c5b0;
+    border-top-color: #8b6914;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#loadingText {
+    margin-top: 15px;
+    color: #5a4a3a;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .reader-content {
+        flex-direction: column;
+        height: auto;
+    }
+    .pane {
+        padding: 20px;
+    }
+    .pane-divider {
+        width: auto;
+        height: 1px;
+    }
+    header h1 {
+        font-size: 2rem;
+    }
+    .work-title {
+        display: none;
+    }
+}

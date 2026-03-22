@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greek Reader</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Landing Page -->
+        <div id="landing" class="page active">
+            <header>
+                <h1>Greek Reader</h1>
+                <p class="subtitle">Read ancient texts with inline dictionary</p>
+            </header>
+
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Search by author or work name..." autocomplete="off">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <div id="recentWorks" class="recent-works">
+                <h2>Recent Works</h2>
+                <div id="recentList"></div>
+            </div>
+        </div>
+
+        <!-- Reader Page -->
+        <div id="reader" class="page">
+            <nav class="reader-nav">
+                <button id="backBtn" class="nav-btn">&larr; Back</button>
+                <span id="workTitle" class="work-title"></span>
+                <div class="nav-controls">
+                    <button id="prevBtn" class="nav-btn">&laquo; Prev</button>
+                    <span id="sectionInfo" class="section-info"></span>
+                    <button id="nextBtn" class="nav-btn">Next &raquo;</button>
+                </div>
+            </nav>
+            <div id="readerContent" class="reader-content">
+                <div id="originalPane" class="pane">
+                    <h3 class="pane-title">Original</h3>
+                    <div id="originalText" class="text-content"></div>
+                </div>
+                <div class="pane-divider"></div>
+                <div id="translationPane" class="pane">
+                    <h3 class="pane-title">English Translation</h3>
+                    <div id="translationText" class="text-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tooltip -->
+        <div id="tooltip" class="tooltip"></div>
+
+        <!-- Loading overlay -->
+        <div id="loading" class="loading-overlay">
+            <div class="spinner"></div>
+            <p id="loadingText">Loading...</p>
+        </div>
+    </div>
+    <script src="/app.js"></script>
+</body>
+</html>
