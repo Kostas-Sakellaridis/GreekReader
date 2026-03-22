@@ -265,7 +265,9 @@
                 engBlock.className = 'section-block';
                 engBlock.innerHTML = `<div class="section-label">§ ${esc(sectionRef)}</div>`;
                 const engDiv = document.createElement('div');
-                engDiv.textContent = engContent || '(No translation available)';
+                const cleanEng = (engContent && !engContent.includes('error') && !engContent.includes('Document is empty'))
+                    ? engContent : '';
+                engDiv.textContent = cleanEng || '(No translation available)';
                 engBlock.appendChild(engDiv);
                 translationText.appendChild(engBlock);
             }
@@ -364,7 +366,7 @@
         };
     })();
 
-    // --- Morphology tooltip ---
+    // --- Morphology + Definition tooltip ---
     async function showMorphTooltip(wordEl, x, y) {
         const word = wordEl.dataset.word;
         const lang = wordEl.dataset.lang || 'greek';
@@ -381,16 +383,15 @@
         }
 
         try {
-            // Convert Greek Unicode to beta code for the Perseus morphology API
             const lookupWord = (lang === 'greek') ? greekToBeta(word) : word;
-            const resp = await fetch(`/api/morph?word=${encodeURIComponent(lookupWord)}&lang=${encodeURIComponent(lang)}`);
-            const text = await resp.text();
-            const doc = parseXml(text);
-            const analyses = [];
-            const allEls = doc.getElementsByTagName('*');
-            let currentAnalysis = null;
 
-            for (const el of allEls) {
+            // Step 1: Fetch morphology
+            const morphResp = await fetch(`/api/morph?word=${encodeURIComponent(lookupWord)}&lang=${encodeURIComponent(lang)}`);
+            const morphText = await morphResp.text();
+            const doc = parseXml(morphText);
+            const analyses = [];
+            let currentAnalysis = null;
+            for (const el of doc.getElementsByTagName('*')) {
                 if (el.localName === 'analysis') {
                     currentAnalysis = {};
                     analyses.push(currentAnalysis);
@@ -403,11 +404,63 @@
                 }
             }
 
+            // Step 2: Collect unique lemmas and fetch definitions for each
+            const uniqueLemmas = [...new Set(analyses.map(a => a.lemma).filter(Boolean))];
+            const defMap = {};
+
+            if (uniqueLemmas.length > 0) {
+                const defPromises = uniqueLemmas.map(async lemma => {
+                    const betaLemma = (lang === 'greek') ? greekToBeta(lemma) : lemma;
+                    try {
+                        const resp = await fetch(`/api/define?word=${encodeURIComponent(betaLemma)}&lang=${encodeURIComponent(lang)}`);
+                        const html = await resp.text();
+                        const defs = parseDefinitions(html);
+                        if (defs.length > 0) {
+                            defMap[lemma] = defs[0].shortDef;
+                        }
+                    } catch { /* ignore */ }
+                });
+                await Promise.all(defPromises);
+            }
+
+            // Attach definitions to analyses
+            for (const a of analyses) {
+                if (a.lemma && defMap[a.lemma]) {
+                    a.definition = defMap[a.lemma];
+                }
+            }
+
             state.morphCache[cacheKey] = analyses;
             renderMorphTooltip(analyses, word);
         } catch {
             tooltip.innerHTML = `<div class="lemma">${esc(word)}</div><div class="definition">Dictionary unavailable</div>`;
         }
+    }
+
+    function parseDefinitions(html) {
+        // Parse the resolveform HTML to extract lemma + short definition pairs
+        // The table has rows with: <td>lemma</td> <td>dict links</td> <td>freq</td> <td>freq</td> <td>short def</td>
+        const definitions = [];
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const rows = doc.querySelectorAll('tr');
+            for (const row of rows) {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 4) {
+                    // The last <td> in each data row contains the short definition
+                    const lastCell = cells[cells.length - 1];
+                    const shortDef = lastCell.textContent.trim();
+                    // First cell has the lemma link
+                    const lemmaLink = cells[0].querySelector('a');
+                    const lemma = lemmaLink ? lemmaLink.textContent.trim() : cells[0].textContent.trim();
+                    if (shortDef && lemma && !shortDef.match(/^\d/) && shortDef !== 'Min. Freq.') {
+                        definitions.push({ lemma, shortDef });
+                    }
+                }
+            }
+        } catch { /* ignore parsing errors */ }
+        return definitions;
     }
 
     function renderMorphTooltip(analyses, word) {
@@ -426,8 +479,12 @@
         tooltip.innerHTML = unique.slice(0, 3).map(a => {
             const morphParts = [a.pos, a.number, a.gender, a.case, a.tense, a.mood, a.voice, a.person]
                 .filter(Boolean);
-            return `<div class="lemma">${esc(a.lemma || word)}</div>
+            let html = `<div class="lemma">${esc(a.lemma || word)}</div>
                     <div class="morph">${esc(morphParts.join(', '))}</div>`;
+            if (a.definition) {
+                html += `<div class="definition">${esc(a.definition)}</div>`;
+            }
+            return html;
         }).join('<hr style="border:none;border-top:1px solid #555;margin:6px 0">');
     }
 
@@ -439,6 +496,26 @@
         tooltip.style.left = Math.max(0, left) + 'px';
         tooltip.style.top = Math.max(0, top) + 'px';
     }
+
+    // --- Synchronized scrolling ---
+    const origPane = $('originalPane');
+    const transPane = $('translationPane');
+    let syncingScroll = false;
+
+    origPane.addEventListener('scroll', () => {
+        if (syncingScroll) return;
+        syncingScroll = true;
+        const ratio = origPane.scrollTop / (origPane.scrollHeight - origPane.clientHeight || 1);
+        transPane.scrollTop = ratio * (transPane.scrollHeight - transPane.clientHeight);
+        syncingScroll = false;
+    });
+    transPane.addEventListener('scroll', () => {
+        if (syncingScroll) return;
+        syncingScroll = true;
+        const ratio = transPane.scrollTop / (transPane.scrollHeight - transPane.clientHeight || 1);
+        origPane.scrollTop = ratio * (origPane.scrollHeight - origPane.clientHeight);
+        syncingScroll = false;
+    });
 
     // --- Events ---
     let searchTimeout;

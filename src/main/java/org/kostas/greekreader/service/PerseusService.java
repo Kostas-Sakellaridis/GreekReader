@@ -57,6 +57,14 @@ public class PerseusService {
                 .block();
     }
 
+    public String resolveForm(String word, String lang) {
+        return perseusClient.get()
+                .uri("/resolveform?type=exact&lookup=" + word + "&lang=" + lang)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
+
     public String getScaifeLibrary() {
         return scaifeJsonClient.get()
                 .uri("/library/json/")

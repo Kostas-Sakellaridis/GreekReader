@@ -2,4 +2,4 @@ spring:
   application:
     name: GreekReader
 server:
-  port: 8085
+  port: ${PORT:8085}
