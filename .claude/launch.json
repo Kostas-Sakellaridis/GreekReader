@@ -5,7 +5,8 @@
       "name": "greek-reader",
       "runtimeExecutable": "java",
       "runtimeArgs": ["-jar", "target/GreekReader-0.0.1-SNAPSHOT.jar"],
-      "port": 8085
+      "port": 8085,
+      "autoPort": false
     }
   ]
 }

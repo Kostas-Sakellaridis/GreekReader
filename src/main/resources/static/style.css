@@ -191,6 +191,160 @@ body {
 .page { display: none; }
 .page.active { display: block; }
 
+/* ========== Hamburger Menu ========== */
+.hamburger-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 200;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg-surface);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.hamburger-btn span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 1px;
+    transition: all 0.2s;
+}
+
+.hamburger-btn:hover {
+    border-color: var(--text-accent);
+    transform: scale(1.1);
+}
+
+.menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 290;
+    display: none;
+}
+
+.menu-overlay.visible { display: block; }
+
+.side-menu {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 280px;
+    height: 100vh;
+    background: var(--bg-surface);
+    border-right: 2px solid var(--border);
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+    transition: left 0.3s ease;
+}
+
+.side-menu.visible {
+    left: 0;
+}
+
+.side-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--nav-bg);
+    color: var(--nav-text);
+    font-weight: bold;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+.side-menu-close {
+    background: none;
+    border: none;
+    color: var(--nav-text);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.side-menu-close:hover { opacity: 0.7; }
+
+.side-menu-items {
+    flex: 1;
+    padding: 12px 0;
+    overflow-y: auto;
+}
+
+.side-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 20px;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.side-menu-item:hover {
+    background: var(--bg-hover);
+}
+
+.menu-icon {
+    font-size: 1.2rem;
+    width: 24px;
+    text-align: center;
+}
+
+.side-menu-select {
+    cursor: default;
+}
+
+.menu-select-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.menu-select-group label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.menu-select-group select {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+}
+
+.menu-select-group select:focus {
+    border-color: var(--text-accent);
+}
+
 /* ========== Theme Picker ========== */
 .theme-toggle {
     position: fixed;
@@ -614,6 +768,12 @@ header h1 {
 }
 
 /* ========== Responsive ========== */
+#reader.active ~ .hamburger-btn {
+    top: auto;
+    bottom: 20px;
+    left: 16px;
+}
+
 @media (max-width: 768px) {
     .reader-content {
         flex-direction: column;

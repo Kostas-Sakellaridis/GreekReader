@@ -631,6 +631,45 @@
     const savedTheme = localStorage.getItem('greekReaderTheme') || 'parchment';
     setTheme(savedTheme);
 
+    // --- Hamburger Menu ---
+    const hamburgerBtn = $('hamburgerBtn');
+    const sideMenu = $('sideMenu');
+    const closeMenu = $('closeMenu');
+    const menuOverlay = $('menuOverlay');
+    const changeApiKeyBtn = $('changeApiKeyBtn');
+
+    function openMenu() {
+        sideMenu.classList.add('visible');
+        menuOverlay.classList.add('visible');
+    }
+    function closeMenuFn() {
+        sideMenu.classList.remove('visible');
+        menuOverlay.classList.remove('visible');
+    }
+
+    hamburgerBtn.addEventListener('click', openMenu);
+    closeMenu.addEventListener('click', closeMenuFn);
+    menuOverlay.addEventListener('click', closeMenuFn);
+
+    // Model selector
+    const modelSelect = $('modelSelect');
+    const savedModel = localStorage.getItem('geminiModel') || 'gemini-2.5-flash';
+    modelSelect.value = savedModel;
+    modelSelect.addEventListener('change', () => {
+        localStorage.setItem('geminiModel', modelSelect.value);
+    });
+
+    function getModel() {
+        return localStorage.getItem('geminiModel') || 'gemini-2.5-flash';
+    }
+
+    changeApiKeyBtn.addEventListener('click', () => {
+        closeMenuFn();
+        apiKeyInput.value = getApiKey();
+        apiKeyModal.classList.add('visible');
+        apiKeyInput.focus();
+    });
+
     // --- AI Analysis (Gemini) ---
     const selectionPopup = $('selectionPopup');
     const analyzeBtn = $('analyzeBtn');
@@ -645,7 +684,7 @@
     let selectedText = '';
 
     function getApiKey() {
-        return localStorage.getItem('geminiApiKey') || 'AIzaSyCG8NGG2kcrLdviB5EIfNjnSZW3SgZ1QHc';
+        return localStorage.getItem('geminiApiKey') || 'AIzaSyCoOhD9l7-Xo_pKX4Vlaxx8KVWxEBmq9ig';
     }
 
     // Show "Analyze" button near selection
@@ -735,8 +774,9 @@ Text to analyze:
 ${text}`;
 
         try {
+            const model = getModel();
             const resp = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

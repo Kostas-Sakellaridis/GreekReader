@@ -50,6 +50,37 @@
             </div>
         </div>
 
+        <!-- Hamburger Menu -->
+        <button id="hamburgerBtn" class="hamburger-btn" title="Menu">
+            <span></span><span></span><span></span>
+        </button>
+        <div id="sideMenu" class="side-menu">
+            <div class="side-menu-header">
+                <span>Settings</span>
+                <button id="closeMenu" class="side-menu-close">&times;</button>
+            </div>
+            <div class="side-menu-items">
+                <div class="side-menu-item side-menu-select">
+                    <span class="menu-icon">&#129302;</span>
+                    <div class="menu-select-group">
+                        <label for="modelSelect">AI Model</label>
+                        <select id="modelSelect">
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                            <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="changeApiKeyBtn" class="side-menu-item">
+                    <span class="menu-icon">&#128273;</span>
+                    <span>Change API Key</span>
+                </button>
+            </div>
+        </div>
+        <div id="menuOverlay" class="menu-overlay"></div>
+
         <!-- Theme Picker -->
         <button id="themeBtnLanding" class="theme-toggle" title="Change theme">&#9681;</button>
         <div id="themePicker" class="theme-picker">
