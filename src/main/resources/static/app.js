@@ -6,7 +6,7 @@
         sections: [],
         currentWork: null,
         currentPage: 0,
-        pageSize: 5,
+        pageSize: 1,
         morphCache: {}
     };
 
@@ -79,64 +79,39 @@
     async function fetchCapabilities() {
         showLoading('Loading library catalog...');
         try {
-            const resp = await fetch('/api/capabilities');
-            if (!resp.ok) throw new Error('Capabilities fetch failed');
-            const text = await resp.text();
-            const doc = parseXml(text);
+            const resp = await fetch('/api/library');
+            if (!resp.ok) throw new Error('Library fetch failed');
+            const data = await resp.json();
             const works = [];
 
-            // Iterate all elements since namespaces make querySelector unreliable
-            const allEls = doc.getElementsByTagName('*');
-            const textgroups = [];
-            for (const el of allEls) {
-                if (el.localName === 'textgroup') textgroups.push(el);
-            }
+            const textsByUrn = {};
+            for (const t of (data.texts || [])) textsByUrn[t.urn] = t;
+            const worksByUrn = {};
+            for (const w of (data.works || [])) worksByUrn[w.urn] = w;
 
-            for (const tg of textgroups) {
-                const groupUrn = tg.getAttribute('urn') || '';
-                let author = '';
-                for (const child of tg.children) {
-                    if (child.localName === 'groupname') {
-                        author = child.textContent.trim();
-                        break;
-                    }
-                }
-                author = author || groupUrn;
-
-                // Find work elements (direct children)
-                for (const child of tg.children) {
-                    if (child.localName !== 'work') continue;
-                    const workUrn = child.getAttribute('urn') || '';
-                    const lang = child.getAttribute('xml:lang') || child.getAttribute('lang') || '';
-
-                    let title = '';
-                    for (const wChild of child.children) {
-                        if (wChild.localName === 'title') {
-                            title = wChild.textContent.trim();
-                            break;
-                        }
-                    }
-                    title = title || workUrn;
-
+            for (const tg of (data.text_groups || [])) {
+                const author = tg.label || tg.urn;
+                for (const work of (tg.works || [])) {
+                    const workMeta = worksByUrn[work.urn] || {};
+                    const title = workMeta.label || work.label || work.urn;
                     let origUrn = '';
                     let engUrn = '';
+                    let origLang = '';
 
-                    for (const wChild of child.children) {
-                        if (wChild.localName === 'edition') {
-                            origUrn = origUrn || (wChild.getAttribute('urn') || '');
-                        }
-                        if (wChild.localName === 'translation') {
-                            const trLang = wChild.getAttribute('xml:lang') || wChild.getAttribute('lang') || '';
-                            if (!engUrn || trLang === 'eng' || trLang === 'en') {
-                                engUrn = wChild.getAttribute('urn') || '';
-                            }
+                    for (const text of (work.texts || [])) {
+                        const meta = textsByUrn[text.urn] || {};
+                        if (meta.kind === 'edition' && !origUrn) {
+                            origUrn = text.urn;
+                            origLang = meta.lang || '';
+                        } else if (meta.kind === 'translation' && meta.lang === 'eng' && !engUrn) {
+                            engUrn = text.urn;
                         }
                     }
 
                     if (origUrn) {
                         works.push({
-                            urn: workUrn, label: title, author: author,
-                            lang: lang, origUrn: origUrn, engUrn: engUrn
+                            urn: work.urn, label: title, author: author,
+                            lang: origLang, origUrn: origUrn, engUrn: engUrn
                         });
                     }
                 }
@@ -144,7 +119,7 @@
 
             state.works = works;
         } catch (e) {
-            console.error('Failed to fetch capabilities', e);
+            console.error('Failed to fetch library', e);
             loadPopularWorks();
         }
         hideLoading();
@@ -179,32 +154,32 @@
         showLoading('Loading sections...');
 
         try {
-            // Try increasing levels to find leaf sections
-            let refs = [];
-            for (let level = 1; level <= 3; level++) {
-                const resp = await fetch(`/api/reff?urn=${encodeURIComponent(work.origUrn)}&level=${level}`);
-                const text = await resp.text();
-                const doc = parseXml(text);
-                const newRefs = [];
-                const allEls = doc.getElementsByTagName('*');
-                for (const el of allEls) {
-                    if (el.localName === 'urn') {
-                        newRefs.push(el.textContent.trim());
-                    }
-                }
-                if (newRefs.length > 0) refs = newRefs;
-                // If we got a reasonable number (>1) of refs, and they look like leaf nodes, stop
-                if (newRefs.length > 1 && newRefs.length <= 500) break;
-                if (newRefs.length > 500) break; // too many, use this level
+            const resp = await fetch(`/api/reff?urn=${encodeURIComponent(work.origUrn)}`);
+            if (!resp.ok) throw new Error('TOC fetch failed');
+            const data = await resp.json();
+            const toc = data.toc || [];
+
+            const sections = toc.map(entry => {
+                const num = entry.num || extractPassageRef(entry.urn);
+                const sectionUrn = `${work.origUrn}:${num}`;
+                const label = entry.label ? `${entry.label} ${num}` : num;
+                return { urn: sectionUrn, label };
+            });
+
+            if (sections.length === 0 && data.first_passage && data.first_passage.urn) {
+                sections.push({
+                    urn: data.first_passage.urn,
+                    label: extractPassageRef(data.first_passage.urn)
+                });
             }
 
-            if (refs.length === 0) {
+            if (sections.length === 0) {
                 hideLoading();
                 alert('No sections found for this work.');
                 return;
             }
 
-            state.sections = refs;
+            state.sections = sections;
             state.currentPage = startSection ? Math.floor(startSection / state.pageSize) : 0;
             workTitle.textContent = `${work.author} — ${work.label}`;
             showPage(reader);
@@ -220,14 +195,14 @@
     async function loadCurrentPage() {
         const start = state.currentPage * state.pageSize;
         const end = Math.min(start + state.pageSize, state.sections.length);
-        const pageRefs = state.sections.slice(start, end);
+        const pageSections = state.sections.slice(start, end);
         const totalPages = Math.ceil(state.sections.length / state.pageSize);
 
         sectionInfo.textContent = `Page ${state.currentPage + 1} / ${totalPages}`;
         prevBtn.disabled = state.currentPage === 0;
         nextBtn.disabled = state.currentPage >= totalPages - 1;
 
-        showLoading(`Loading sections ${start + 1}–${end}...`);
+        showLoading(`Loading section${pageSections.length > 1 ? 's' : ''} ${start + 1}–${end}...`);
         originalText.innerHTML = '';
         translationText.innerHTML = '';
 
@@ -235,26 +210,26 @@
         renderRecent();
 
         try {
-            const origPromises = pageRefs.map(urn => fetchPassageText(urn));
+            const origPromises = pageSections.map(s => fetchPassageText(s.urn));
             const origResults = await Promise.all(origPromises);
 
             let engResults = [];
             if (state.currentWork.engUrn) {
-                const engRefs = pageRefs.map(urn => {
-                    const passageRef = extractPassageRef(urn);
+                const engRefs = pageSections.map(s => {
+                    const passageRef = extractPassageRef(s.urn);
                     return state.currentWork.engUrn + ':' + passageRef;
                 });
-                engResults = await Promise.all(engRefs.map(u => fetchPassageText(u).catch(() => null)));
+                engResults = await Promise.all(engRefs.map(u => fetchPassageText(u).catch(() => '')));
             }
 
-            for (let i = 0; i < pageRefs.length; i++) {
-                const sectionRef = extractPassageRef(pageRefs[i]);
-                const origContent = stripXmlTags(origResults[i] || '');
-                const engContent = stripXmlTags(engResults[i] || '');
+            for (let i = 0; i < pageSections.length; i++) {
+                const sectionLabel = pageSections[i].label;
+                const origContent = (origResults[i] || '').trim();
+                const engContent = (engResults[i] || '').trim();
 
                 const origBlock = document.createElement('div');
                 origBlock.className = 'section-block';
-                origBlock.innerHTML = `<div class="section-label">§ ${esc(sectionRef)}</div>`;
+                origBlock.innerHTML = `<div class="section-label">§ ${esc(sectionLabel)}</div>`;
                 const origDiv = document.createElement('div');
                 const langType = (state.currentWork.lang === 'lat' || state.currentWork.lang === 'la') ? 'latin' : 'greek';
                 origDiv.innerHTML = wrapWords(origContent, langType);
@@ -263,11 +238,9 @@
 
                 const engBlock = document.createElement('div');
                 engBlock.className = 'section-block';
-                engBlock.innerHTML = `<div class="section-label">§ ${esc(sectionRef)}</div>`;
+                engBlock.innerHTML = `<div class="section-label">§ ${esc(sectionLabel)}</div>`;
                 const engDiv = document.createElement('div');
-                const cleanEng = (engContent && !engContent.includes('error') && !engContent.includes('Document is empty'))
-                    ? engContent : '';
-                engDiv.textContent = cleanEng || '(No translation available)';
+                engDiv.textContent = engContent || '(No translation available)';
                 engBlock.appendChild(engDiv);
                 translationText.appendChild(engBlock);
             }
@@ -281,8 +254,7 @@
     async function fetchPassageText(urn) {
         const resp = await fetch(`/api/passage?urn=${encodeURIComponent(urn)}`);
         if (!resp.ok) return '';
-        const text = await resp.text();
-        return text;
+        return await resp.text();
     }
 
     function extractPassageRef(urn) {

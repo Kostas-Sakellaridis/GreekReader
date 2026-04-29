@@ -7,17 +7,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class PerseusService {
 
     private final WebClient scaifeClient;
-    private final WebClient scaifeJsonClient;
     private final WebClient perseusClient;
 
     public PerseusService() {
         this.scaifeClient = WebClient.builder()
-                .baseUrl("https://scaife-cts.perseus.org/api/cts")
-                .codecs(c -> c.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
-                .build();
-        this.scaifeJsonClient = WebClient.builder()
                 .baseUrl("https://scaife.perseus.org")
-                .codecs(c -> c.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(20 * 1024 * 1024))
                 .build();
         this.perseusClient = WebClient.builder()
                 .baseUrl("https://www.perseus.tufts.edu/hopper")
@@ -25,25 +20,25 @@ public class PerseusService {
                 .build();
     }
 
-    public String getCapabilities() {
+    public String getLibrary() {
         return scaifeClient.get()
-                .uri("?request=GetCapabilities")
+                .uri("/library/json/")
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
     }
 
-    public String getValidReff(String urn, int level) {
+    public String getWorkToc(String urn) {
         return scaifeClient.get()
-                .uri("?request=GetValidReff&urn=" + urn + "&level=" + level)
+                .uri("/library/{urn}/json/", urn)
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
     }
 
-    public String getPassage(String urn) {
+    public String getPassageText(String urn) {
         return scaifeClient.get()
-                .uri("?request=GetPassage&urn=" + urn)
+                .uri("/library/passage/{urn}/text/", urn)
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
@@ -60,14 +55,6 @@ public class PerseusService {
     public String resolveForm(String word, String lang) {
         return perseusClient.get()
                 .uri("/resolveform?type=exact&lookup=" + word + "&lang=" + lang)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-    }
-
-    public String getScaifeLibrary() {
-        return scaifeJsonClient.get()
-                .uri("/library/json/")
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();

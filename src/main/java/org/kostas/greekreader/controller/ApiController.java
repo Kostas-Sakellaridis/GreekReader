@@ -2,7 +2,6 @@ package org.kostas.greekreader.controller;
 
 import org.kostas.greekreader.service.PerseusService;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,19 +14,19 @@ public class ApiController {
         this.perseusService = perseusService;
     }
 
-    @GetMapping(value = "/capabilities", produces = MediaType.APPLICATION_XML_VALUE)
-    public String getCapabilities() {
-        return perseusService.getCapabilities();
+    @GetMapping(value = "/library", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String getLibrary() {
+        return perseusService.getLibrary();
     }
 
-    @GetMapping(value = "/reff", produces = MediaType.APPLICATION_XML_VALUE)
-    public String getValidReff(@RequestParam String urn, @RequestParam(defaultValue = "1") int level) {
-        return perseusService.getValidReff(urn, level);
+    @GetMapping(value = "/reff", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String getValidReff(@RequestParam String urn) {
+        return perseusService.getWorkToc(urn);
     }
 
-    @GetMapping(value = "/passage", produces = MediaType.APPLICATION_XML_VALUE)
+    @GetMapping(value = "/passage", produces = "text/plain;charset=UTF-8")
     public String getPassage(@RequestParam String urn) {
-        return perseusService.getPassage(urn);
+        return perseusService.getPassageText(urn);
     }
 
     @GetMapping(value = "/morph", produces = MediaType.APPLICATION_XML_VALUE)
@@ -38,11 +37,5 @@ public class ApiController {
     @GetMapping(value = "/define", produces = MediaType.TEXT_HTML_VALUE)
     public String resolveForm(@RequestParam String word, @RequestParam(defaultValue = "greek") String lang) {
         return perseusService.resolveForm(word, lang);
-    }
-
-    @GetMapping(value = "/library", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> getLibrary() {
-        String json = perseusService.getScaifeLibrary();
-        return ResponseEntity.ok(json);
     }
 }
