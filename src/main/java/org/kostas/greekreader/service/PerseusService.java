@@ -8,6 +8,7 @@ public class PerseusService {
 
     private final WebClient scaifeClient;
     private final WebClient perseusClient;
+    private final WebClient morpheusClient;
 
     public PerseusService() {
         this.scaifeClient = WebClient.builder()
@@ -17,6 +18,10 @@ public class PerseusService {
         this.perseusClient = WebClient.builder()
                 .baseUrl("https://www.perseus.tufts.edu/hopper")
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(5 * 1024 * 1024))
+                .build();
+        this.morpheusClient = WebClient.builder()
+                .baseUrl("https://morph.perseids.org")
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
                 .build();
     }
 
@@ -45,8 +50,15 @@ public class PerseusService {
     }
 
     public String getMorphology(String word, String lang) {
-        return perseusClient.get()
-                .uri("/xmlmorph?lang=" + lang + "&lookup=" + word)
+        boolean isLatin = "lat".equals(lang) || "latin".equals(lang);
+        String engine = isLatin ? "morpheuslat" : "morpheusgrc";
+        String langCode = isLatin ? "lat" : "grc";
+        return morpheusClient.get()
+                .uri(b -> b.path("/analysis/word")
+                        .queryParam("word", word)
+                        .queryParam("lang", langCode)
+                        .queryParam("engine", engine)
+                        .build())
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();

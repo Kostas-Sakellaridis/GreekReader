@@ -307,7 +307,7 @@
         return text.split('\n').map(line =>
             line.split(/(\s+)/).map(w => {
                 if (/^\s+$/.test(w)) return w;
-                const clean = w.replace(/[.,;:·!?''""\u00AB\u00BB\[\](){}\d\u2014\u2013\u2019\u201C\u201D]/g, '').trim();
+                const clean = w.replace(/[.,;:·!?''""\u00AB\u00BB\u02BC\u1FBD\u1FBF\u1FFE\[\](){}\d\u2014\u2013\u2018\u2019\u201C\u201D]/g, '').trim();
                 if (!clean) return esc(w);
                 return `<span class="word" data-word="${esc(clean)}" data-lang="${lang}">${esc(w)}</span>`;
             }).join('')
@@ -339,10 +339,16 @@
     })();
 
     // --- Morphology + Definition tooltip ---
+    let morphRequestSeq = 0;
+    let activeWordEl = null;
+
     async function showMorphTooltip(wordEl, x, y) {
         const word = wordEl.dataset.word;
         const lang = wordEl.dataset.lang || 'greek';
         if (!word) return;
+
+        const myReq = ++morphRequestSeq;
+        activeWordEl = wordEl;
 
         tooltip.innerHTML = `<div class="loading-morph">Looking up "${esc(word)}"...</div>`;
         positionTooltip(x, y);
@@ -350,33 +356,16 @@
 
         const cacheKey = lang + ':' + word;
         if (state.morphCache[cacheKey]) {
-            renderMorphTooltip(state.morphCache[cacheKey], word);
+            if (myReq === morphRequestSeq) renderMorphTooltip(state.morphCache[cacheKey], word);
             return;
         }
 
         try {
-            const lookupWord = (lang === 'greek') ? greekToBeta(word) : word;
+            const morphResp = await fetch(`/api/morph?word=${encodeURIComponent(word)}&lang=${encodeURIComponent(lang)}`);
+            if (myReq !== morphRequestSeq) return;
+            const morphJson = await morphResp.json();
+            const analyses = parseMorpheusAnalyses(morphJson);
 
-            // Step 1: Fetch morphology
-            const morphResp = await fetch(`/api/morph?word=${encodeURIComponent(lookupWord)}&lang=${encodeURIComponent(lang)}`);
-            const morphText = await morphResp.text();
-            const doc = parseXml(morphText);
-            const analyses = [];
-            let currentAnalysis = null;
-            for (const el of doc.getElementsByTagName('*')) {
-                if (el.localName === 'analysis') {
-                    currentAnalysis = {};
-                    analyses.push(currentAnalysis);
-                } else if (currentAnalysis) {
-                    const name = el.localName;
-                    if (['form', 'lemma', 'expandedForm', 'pos', 'number', 'gender',
-                         'case', 'tense', 'mood', 'voice', 'person', 'dialect'].includes(name)) {
-                        currentAnalysis[name] = el.textContent.trim();
-                    }
-                }
-            }
-
-            // Step 2: Collect unique lemmas and fetch definitions for each
             const uniqueLemmas = [...new Set(analyses.map(a => a.lemma).filter(Boolean))];
             const defMap = {};
 
@@ -387,26 +376,57 @@
                         const resp = await fetch(`/api/define?word=${encodeURIComponent(betaLemma)}&lang=${encodeURIComponent(lang)}`);
                         const html = await resp.text();
                         const defs = parseDefinitions(html);
-                        if (defs.length > 0) {
-                            defMap[lemma] = defs[0].shortDef;
-                        }
+                        if (defs.length > 0) defMap[lemma] = defs[0].shortDef;
                     } catch { /* ignore */ }
                 });
                 await Promise.all(defPromises);
+                if (myReq !== morphRequestSeq) return;
             }
 
-            // Attach definitions to analyses
             for (const a of analyses) {
-                if (a.lemma && defMap[a.lemma]) {
-                    a.definition = defMap[a.lemma];
-                }
+                if (a.lemma && defMap[a.lemma]) a.definition = defMap[a.lemma];
             }
 
             state.morphCache[cacheKey] = analyses;
-            renderMorphTooltip(analyses, word);
+            if (myReq === morphRequestSeq) renderMorphTooltip(analyses, word);
         } catch {
-            tooltip.innerHTML = `<div class="lemma">${esc(word)}</div><div class="definition">Dictionary unavailable</div>`;
+            if (myReq === morphRequestSeq) {
+                tooltip.innerHTML = `<div class="lemma">${esc(word)}</div><div class="definition">Dictionary unavailable</div>`;
+            }
         }
+    }
+
+    function parseMorpheusAnalyses(json) {
+        // Morpheus response: RDF.Annotation.Body (object or array). Each Body has
+        // .rest.entry with dict (lemma + pos + gender) and infl (case, number, ...).
+        // An entry's infl can itself be an array if the form is ambiguous.
+        const out = [];
+        const ann = json && json.RDF && json.RDF.Annotation;
+        if (!ann) return out;
+        const bodies = [].concat(ann.Body || ann.body || []);
+        for (const body of bodies) {
+            const entry = body && body.rest && body.rest.entry;
+            if (!entry) continue;
+            const lemma = entry.dict && entry.dict.hdwd && entry.dict.hdwd.$;
+            const dictPos = entry.dict && entry.dict.pofs && entry.dict.pofs.$;
+            const dictGend = entry.dict && entry.dict.gend && entry.dict.gend.$;
+            const infls = [].concat(entry.infl || [{}]);
+            for (const infl of infls) {
+                const v = key => infl && infl[key] && infl[key].$;
+                out.push({
+                    lemma: lemma || '',
+                    pos: v('pofs') || dictPos || '',
+                    gender: v('gend') || dictGend || '',
+                    case: v('case') || '',
+                    number: v('num') || '',
+                    tense: v('tense') || '',
+                    mood: v('mood') || '',
+                    voice: v('voice') || '',
+                    person: v('pers') || '',
+                });
+            }
+        }
+        return out;
     }
 
     function parseDefinitions(html) {
@@ -540,7 +560,12 @@
         }
     });
     document.addEventListener('mouseout', e => {
-        if (e.target.closest('.word')) { clearTimeout(tooltipTimeout); tooltip.classList.remove('visible'); }
+        if (e.target.closest('.word')) {
+            clearTimeout(tooltipTimeout);
+            morphRequestSeq++;
+            activeWordEl = null;
+            tooltip.classList.remove('visible');
+        }
     });
     document.addEventListener('mousemove', e => {
         if (tooltip.classList.contains('visible')) positionTooltip(e.clientX, e.clientY);

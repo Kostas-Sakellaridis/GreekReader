@@ -29,7 +29,7 @@ public class ApiController {
         return perseusService.getPassageText(urn);
     }
 
-    @GetMapping(value = "/morph", produces = MediaType.APPLICATION_XML_VALUE)
+    @GetMapping(value = "/morph", produces = MediaType.APPLICATION_JSON_VALUE)
     public String getMorphology(@RequestParam String word, @RequestParam(defaultValue = "greek") String lang) {
         return perseusService.getMorphology(word, lang);
     }
